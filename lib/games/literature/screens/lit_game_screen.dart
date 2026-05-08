@@ -248,6 +248,10 @@ class _AnnouncementOverlayState extends State<_AnnouncementOverlay> {
         widget.state.log.isEmpty ? null : widget.state.log.last;
     if (newest == null) return;
     if (newest.kind != 'ask' && newest.kind != 'declare') return;
+    // Old-format entries (written by clients running the previous build)
+    // don't have structured fields. Skip the overlay for those — there's
+    // nothing to render.
+    if (newest.askerSeatId == null) return;
     if (_showing != null && _showing!.at == newest.at) return;
     setState(() => _showing = newest);
     _timer?.cancel();
