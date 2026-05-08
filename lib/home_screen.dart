@@ -61,12 +61,42 @@ extension on GameKind {
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.firebaseReady});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({
+    super.key,
+    required this.firebaseReady,
+    this.initialGameKind,
+    this.initialCode,
+  });
   final bool firebaseReady;
+  final GameKind? initialGameKind;
+  final String? initialCode;
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialGameKind != null && widget.initialCode != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => GameEntryScreen(
+            kind: widget.initialGameKind!,
+            firebaseReady: widget.firebaseReady,
+            initialCode: widget.initialCode,
+          ),
+        ));
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final firebaseReady = widget.firebaseReady;
     return Scaffold(
       backgroundColor: const Color(0xFF111827),
       body: SafeArea(
@@ -188,18 +218,21 @@ class GameEntryScreen extends StatefulWidget {
     super.key,
     required this.kind,
     required this.firebaseReady,
+    this.initialCode,
   });
   final GameKind kind;
   final bool firebaseReady;
+  final String? initialCode;
 
   @override
   State<GameEntryScreen> createState() => _GameEntryScreenState();
 }
 
 class _GameEntryScreenState extends State<GameEntryScreen> {
-  final _name = TextEditingController();
-  final _code = TextEditingController();
+  late final _name = TextEditingController();
+  late final _code = TextEditingController(text: widget.initialCode ?? '');
   bool _busy = false;
+  bool get _arrivedViaInvite => widget.initialCode != null;
 
   Future<void> _go({required bool host, required bool online}) async {
     final name = _name.text.trim();
@@ -340,6 +373,33 @@ class _GameEntryScreenState extends State<GameEntryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 16),
+                  if (_arrivedViaInvite)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: widget.kind.color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: widget.kind.color),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'You were invited to game ${widget.initialCode}',
+                            style: TextStyle(
+                                color: widget.kind.color,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Type your name and tap "Join online game".',
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
                   _whiteField(_name, 'Your name'),
                   const SizedBox(height: 12),
                   _whiteField(_code, 'Game code (to join)'),

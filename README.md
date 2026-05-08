@@ -121,6 +121,33 @@ flutter test            # 21 engine + widget tests
 Local hot-seat works for any of the three games out of the box — pick a
 game, then *Local hot-seat game*.
 
+## Sharing a game by link
+
+When you host an online game, the lobby has a **Copy invite link** button.
+The link looks like `https://your-domain.com/?game=cambio&code=AB7K3`.
+When a friend opens it, the app:
+
+1. Lands them on the right game's entry screen
+2. Pre-fills the game code
+3. Shows an "invited to game AB7K3" banner
+
+They just type their name and tap **Join online game**.
+
+Invite links require the app to be deployed to a URL — see the Firebase
+Hosting steps below. Native (iOS/Android) builds can still join by typing
+the code manually; the link itself is web-only.
+
+## Deploying to web (so friends can use a link)
+
+```bash
+flutter build web
+firebase init hosting   # pick "build/web" as the public directory
+firebase deploy
+```
+
+Your app will live at something like `https://<project>.web.app`. That's
+the URL the invite-link button uses.
+
 ## Setting up online play (Firebase)
 
 The online mode pushes the game state to Firestore. To enable it:

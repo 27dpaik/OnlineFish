@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../shared/invite.dart';
 import '../controller.dart';
 import '../models.dart';
 import 'oc_game_screen.dart';
@@ -65,6 +66,27 @@ class OcLobbyScreen extends StatelessWidget {
                           style: const TextStyle(
                               color: Colors.white70, fontSize: 12),
                         ),
+                        if (!ctrl.isLocalMode) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              await copyInviteLink(
+                                  game: 'oneCard', code: s.gameId);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Invite link copied')),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.link),
+                            label: const Text('Copy invite link'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white38),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

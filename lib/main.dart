@@ -12,12 +12,44 @@ Future<void> main() async {
   } catch (_) {
     firebaseReady = false;
   }
-  runApp(OnlineFishApp(firebaseReady: firebaseReady));
+  // Parse `?game=…&code=…` for invite-link auto-join. Works on Flutter
+  // Web; harmless on native (Uri.base has no query there).
+  final params = Uri.base.queryParameters;
+  final initialGameKind = _parseGameKind(params['game']);
+  final initialCode = params['code']?.toUpperCase();
+  runApp(OnlineFishApp(
+    firebaseReady: firebaseReady,
+    initialGameKind: initialGameKind,
+    initialCode: initialCode,
+  ));
+}
+
+GameKind? _parseGameKind(String? s) {
+  switch (s) {
+    case 'literature':
+      return GameKind.literature;
+    case 'oneCard':
+    case 'one_card':
+    case 'onecard':
+      return GameKind.oneCard;
+    case 'cambio':
+      return GameKind.cambio;
+    default:
+      return null;
+  }
 }
 
 class OnlineFishApp extends StatelessWidget {
-  const OnlineFishApp({super.key, required this.firebaseReady});
+  const OnlineFishApp({
+    super.key,
+    required this.firebaseReady,
+    this.initialGameKind,
+    this.initialCode,
+  });
+
   final bool firebaseReady;
+  final GameKind? initialGameKind;
+  final String? initialCode;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +64,11 @@ class OnlineFishApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF111827),
       ),
       debugShowCheckedModeBanner: false,
-      home: HomeScreen(firebaseReady: firebaseReady),
+      home: HomeScreen(
+        firebaseReady: firebaseReady,
+        initialGameKind: initialGameKind,
+        initialCode: initialCode,
+      ),
     );
   }
 }
