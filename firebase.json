@@ -1,0 +1,37 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "onlinefish-b13e1",
+          "appId": "1:990792833302:android:632d144f61246c99bd9837",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "onlinefish-b13e1",
+          "configurations": {
+            "android": "1:990792833302:android:632d144f61246c99bd9837",
+            "web": "1:990792833302:web:fc998fcb791968c2bd9837",
+            "windows": "1:990792833302:web:c0096f5be97fa9e3bd9837"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

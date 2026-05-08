@@ -12,6 +12,9 @@
 .swiftpm/
 migrate_working_dir/
 
+# Firebase deploy cache
+.firebase/
+
 # IntelliJ related
 *.iml
 *.ipr

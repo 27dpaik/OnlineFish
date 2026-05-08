@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "990792833302",
+    "project_id": "onlinefish-b13e1",
+    "storage_bucket": "onlinefish-b13e1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:990792833302:android:632d144f61246c99bd9837",
+        "android_client_info": {
+          "package_name": "com.dpaik.literature_game"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAx71MR4JZ6ytOclvUqT4KQfjqwPBA9vb8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
