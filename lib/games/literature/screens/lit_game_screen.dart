@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/card_model.dart';
-import '../models/game_models.dart';
-import '../state/game_controller.dart';
-import '../widgets/card_widget.dart';
-import 'declare_screen.dart';
+import '../../../shared/card_model.dart';
+import '../../../shared/card_widget.dart';
+import '../controller.dart';
+import '../half_suite.dart';
+import '../models.dart';
+import 'lit_declare_screen.dart';
 
-class GameScreen extends StatelessWidget {
-  const GameScreen({super.key});
+class LitGameScreen extends StatelessWidget {
+  const LitGameScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<GameController>(
+    return Consumer<LitController>(
       builder: (context, ctrl, _) {
         final s = ctrl.state;
         if (s == null) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
-        if (s.phase == GamePhase.finished) return _FinishedScreen(state: s);
+        if (s.phase == LitPhase.finished) return _FinishedScreen(state: s);
         return Scaffold(
           backgroundColor: const Color(0xFF0E2A1E),
           appBar: AppBar(
             backgroundColor: const Color(0xFF0E2A1E),
             foregroundColor: Colors.white,
-            title: Text('${s.gameId}  •  A ${s.teamScore(TeamId.a)}–${s.teamScore(TeamId.b)} B'),
+            title: Text(
+                '${s.gameId}  •  A ${s.teamScore(TeamId.a)}–${s.teamScore(TeamId.b)} B'),
           ),
           body: SafeArea(
             child: Column(
@@ -64,7 +67,7 @@ class GameScreen extends StatelessWidget {
 
 class _HalfSuiteStrip extends StatelessWidget {
   const _HalfSuiteStrip({required this.state});
-  final GameState state;
+  final LitGameState state;
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +81,9 @@ class _HalfSuiteStrip extends StatelessWidget {
           final winner = state.claimedHalfSuites[hs.id];
           final color = winner == null
               ? Colors.white24
-              : (winner == TeamId.a ? const Color(0xFF60A5FA) : const Color(0xFFF87171));
+              : (winner == TeamId.a
+                  ? const Color(0xFF60A5FA)
+                  : const Color(0xFFF87171));
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -91,7 +96,7 @@ class _HalfSuiteStrip extends StatelessWidget {
                 style: const TextStyle(color: Colors.white, fontSize: 12)),
           );
         },
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
         itemCount: HalfSuites.all.length,
       ),
     );
@@ -100,8 +105,8 @@ class _HalfSuiteStrip extends StatelessWidget {
 
 class _SeatSwitcher extends StatelessWidget {
   const _SeatSwitcher({required this.controller, required this.state});
-  final GameController controller;
-  final GameState state;
+  final LitController controller;
+  final LitGameState state;
 
   @override
   Widget build(BuildContext context) {
@@ -118,8 +123,9 @@ class _SeatSwitcher extends StatelessWidget {
           ),
           ...state.seats.map((seat) {
             final selected = seat.id == mine;
-            final names =
-                seat.playerIds.map((id) => state.players[id]?.name ?? '?').join('+');
+            final names = seat.playerIds
+                .map((id) => state.players[id]?.name ?? '?')
+                .join('+');
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: ChoiceChip(
@@ -142,7 +148,7 @@ class _SeatSwitcher extends StatelessWidget {
 
 class _OpponentRow extends StatelessWidget {
   const _OpponentRow({required this.state, required this.mySeatId});
-  final GameState state;
+  final LitGameState state;
   final String? mySeatId;
 
   @override
@@ -166,8 +172,8 @@ class _OpponentRow extends StatelessWidget {
 
 class _OpponentBadge extends StatelessWidget {
   const _OpponentBadge({required this.seat, required this.state});
-  final Seat seat;
-  final GameState state;
+  final LitSeat seat;
+  final LitGameState state;
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +184,9 @@ class _OpponentBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: isCurrent ? const Color(0xFF22C55E).withValues(alpha: 0.25) : Colors.white10,
+        color: isCurrent
+            ? const Color(0xFF22C55E).withValues(alpha: 0.25)
+            : Colors.white10,
         border: Border.all(
             color: isCurrent ? const Color(0xFF22C55E) : Colors.white24,
             width: isCurrent ? 2 : 1),
@@ -199,7 +207,7 @@ class _OpponentBadge extends StatelessWidget {
 
 class _LogPane extends StatelessWidget {
   const _LogPane({required this.state});
-  final GameState state;
+  final LitGameState state;
 
   @override
   Widget build(BuildContext context) {
@@ -233,8 +241,8 @@ class _LogPane extends StatelessWidget {
 
 class _ActionBar extends StatelessWidget {
   const _ActionBar({required this.state, required this.controller});
-  final GameState state;
-  final GameController controller;
+  final LitGameState state;
+  final LitController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +291,7 @@ class _ActionBar extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => ChangeNotifierProvider.value(
                           value: controller,
-                          child: DeclareScreen(declarerSeatId: mySeatId),
+                          child: LitDeclareScreen(declarerSeatId: mySeatId),
                         ),
                       ),
                     );
@@ -304,19 +312,19 @@ class _ActionBar extends StatelessWidget {
 
 Future<void> _showAskDialog(
   BuildContext context,
-  GameController controller,
-  GameState state,
+  LitController controller,
+  LitGameState state,
   String mySeatId,
 ) async {
   final myTeam = state.seatById(mySeatId).team;
   final myHand = state.handFor(mySeatId);
-  final oppSeats = state.seatsOnTeam(myTeam.opponent)
+  final oppSeats = state
+      .seatsOnTeam(myTeam.opponent)
       .where((s) => (state.hands[s.id]?.isNotEmpty ?? false))
       .toList();
   if (oppSeats.isEmpty) return;
-  final myHalfSuites = HalfSuites.all
-      .where((hs) => myHand.any(hs.contains))
-      .toList();
+  final myHalfSuites =
+      HalfSuites.all.where((hs) => myHand.any(hs.contains)).toList();
   if (myHalfSuites.isEmpty) return;
 
   String targetSeatId = oppSeats.first.id;
@@ -335,13 +343,15 @@ Future<void> _showAskDialog(
         }
         return AlertDialog(
           backgroundColor: const Color(0xFF1A3A2A),
-          title: const Text('Ask for a card', style: TextStyle(color: Colors.white)),
+          title: const Text('Ask for a card',
+              style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Ask which opponent?', style: TextStyle(color: Colors.white70)),
+                const Text('Ask which opponent?',
+                    style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 6,
@@ -349,12 +359,14 @@ Future<void> _showAskDialog(
                       .map((s) => ChoiceChip(
                             label: Text(s.id),
                             selected: targetSeatId == s.id,
-                            onSelected: (_) => setState(() => targetSeatId = s.id),
+                            onSelected: (_) =>
+                                setState(() => targetSeatId = s.id),
                           ))
                       .toList(),
                 ),
                 const SizedBox(height: 12),
-                const Text('Half-suite:', style: TextStyle(color: Colors.white70)),
+                const Text('Half-suite:',
+                    style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 6,
@@ -363,12 +375,14 @@ Future<void> _showAskDialog(
                       .map((h) => ChoiceChip(
                             label: Text(h.name),
                             selected: halfSuiteId == h.id,
-                            onSelected: (_) => setState(() => halfSuiteId = h.id),
+                            onSelected: (_) =>
+                                setState(() => halfSuiteId = h.id),
                           ))
                       .toList(),
                 ),
                 const SizedBox(height: 12),
-                const Text('Which card?', style: TextStyle(color: Colors.white70)),
+                const Text('Which card?',
+                    style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 8,
@@ -414,8 +428,8 @@ Future<void> _showAskDialog(
 
 class _HandPane extends StatelessWidget {
   const _HandPane({required this.state, required this.controller});
-  final GameState state;
-  final GameController controller;
+  final LitGameState state;
+  final LitController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -444,7 +458,8 @@ class _HandPane extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               children: [
                 for (final hsId in byHs.keys) ...[
-                  _HandGroup(label: HalfSuites.byId(hsId).name, cards: byHs[hsId]!),
+                  _HandGroup(
+                      label: HalfSuites.byId(hsId).name, cards: byHs[hsId]!),
                   const SizedBox(width: 12),
                 ],
               ],
@@ -486,7 +501,7 @@ class _HandGroup extends StatelessWidget {
 
 class _FinishedScreen extends StatelessWidget {
   const _FinishedScreen({required this.state});
-  final GameState state;
+  final LitGameState state;
 
   @override
   Widget build(BuildContext context) {

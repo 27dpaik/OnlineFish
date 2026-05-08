@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/card_model.dart';
-import '../state/game_controller.dart';
-import '../widgets/card_widget.dart';
+import '../../../shared/card_widget.dart';
+import '../controller.dart';
+import '../half_suite.dart';
 
-class DeclareScreen extends StatefulWidget {
-  const DeclareScreen({super.key, required this.declarerSeatId});
+class LitDeclareScreen extends StatefulWidget {
+  const LitDeclareScreen({super.key, required this.declarerSeatId});
   final String declarerSeatId;
 
   @override
-  State<DeclareScreen> createState() => _DeclareScreenState();
+  State<LitDeclareScreen> createState() => _LitDeclareScreenState();
 }
 
-class _DeclareScreenState extends State<DeclareScreen> {
+class _LitDeclareScreenState extends State<LitDeclareScreen> {
   String? _halfSuiteId;
   final Map<String, String> _assignment = {};
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<GameController>(
+    return Consumer<LitController>(
       builder: (context, ctrl, _) {
         final s = ctrl.state;
         if (s == null) return const SizedBox.shrink();
@@ -118,7 +118,8 @@ class _DeclareScreenState extends State<DeclareScreen> {
                                 await ctrl.declare(
                                   declarerSeatId: widget.declarerSeatId,
                                   halfSuiteId: _halfSuiteId!,
-                                  assignment: Map<String, String>.from(_assignment),
+                                  assignment:
+                                      Map<String, String>.from(_assignment),
                                 );
                                 if (context.mounted) Navigator.pop(context);
                               },

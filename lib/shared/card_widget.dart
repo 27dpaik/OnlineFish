@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/card_model.dart';
+import 'card_model.dart';
 
 class CardWidget extends StatelessWidget {
   const CardWidget({
@@ -58,7 +58,9 @@ class CardWidget extends StatelessWidget {
                         card.rank == Rank.jokerBig ? 'BIG\nJOKER' : 'SMALL\nJOKER',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: const Color(0xFF7A1FA2),
+                          color: card.rank == Rank.jokerBig
+                              ? const Color(0xFFC0392B)
+                              : const Color(0xFF1F2937),
                           fontWeight: FontWeight.w700,
                           fontSize: size * 0.18,
                         ),
