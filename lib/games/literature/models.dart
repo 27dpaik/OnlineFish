@@ -80,22 +80,52 @@ class LitPlayer {
 }
 
 class LitLogEntry {
-  final String kind;
+  final String kind; // 'ask' | 'declare' | 'info'
   final String text;
   final DateTime at;
+  // Optional structured fields used by the announcement overlay so it can
+  // render names + card art instead of parsing the text.
+  final String? askerSeatId;
+  final String? targetSeatId;
+  final String? cardId; // card asked for (ask); null for declare/info
+  final bool? success; // ask: did target have it; declare: was it correct
+  final String? halfSuiteId; // declare only
+  final String? winnerTeam; // 'a' | 'b' on declare
 
-  const LitLogEntry({required this.kind, required this.text, required this.at});
+  const LitLogEntry({
+    required this.kind,
+    required this.text,
+    required this.at,
+    this.askerSeatId,
+    this.targetSeatId,
+    this.cardId,
+    this.success,
+    this.halfSuiteId,
+    this.winnerTeam,
+  });
 
   Map<String, dynamic> toJson() => {
         'kind': kind,
         'text': text,
         'at': at.toIso8601String(),
+        if (askerSeatId != null) 'askerSeatId': askerSeatId,
+        if (targetSeatId != null) 'targetSeatId': targetSeatId,
+        if (cardId != null) 'cardId': cardId,
+        if (success != null) 'success': success,
+        if (halfSuiteId != null) 'halfSuiteId': halfSuiteId,
+        if (winnerTeam != null) 'winnerTeam': winnerTeam,
       };
 
   static LitLogEntry fromJson(Map<String, dynamic> j) => LitLogEntry(
         kind: j['kind'] as String,
         text: j['text'] as String,
         at: DateTime.parse(j['at'] as String),
+        askerSeatId: j['askerSeatId'] as String?,
+        targetSeatId: j['targetSeatId'] as String?,
+        cardId: j['cardId'] as String?,
+        success: j['success'] as bool?,
+        halfSuiteId: j['halfSuiteId'] as String?,
+        winnerTeam: j['winnerTeam'] as String?,
       );
 }
 
@@ -152,6 +182,18 @@ class LitGameState {
       );
 
   LitSeat seatById(String id) => seats.firstWhere((s) => s.id == id);
+
+  /// Display label for a seat — uses player names ("Alice", "Alice + Bob"
+  /// for shared seats). Falls back to the seat id only when the seat is
+  /// empty (during the lobby).
+  String seatLabel(String seatId) {
+    final seat = seatById(seatId);
+    if (seat.playerIds.isEmpty) return seat.id;
+    return seat.playerIds
+        .map((id) => players[id]?.name ?? '?')
+        .join(' + ');
+  }
+
   LitSeat seatForPlayer(String playerId) =>
       seats.firstWhere((s) => s.playerIds.contains(playerId));
 

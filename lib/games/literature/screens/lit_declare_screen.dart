@@ -84,7 +84,7 @@ class _LitDeclareScreenState extends State<LitDeclareScreen> {
                                               onSelected: (_) => setState(() {
                                                 _assignment[c.id] = seat.id;
                                               }),
-                                              label: Text(seat.id),
+                                              label: Text(s.seatLabel(seat.id)),
                                             ))
                                         .toList(),
                                   ),

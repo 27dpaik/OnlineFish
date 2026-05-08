@@ -102,7 +102,7 @@ class LiteratureEngine {
         ...s.log,
         LitLogEntry(
           kind: 'info',
-          text: 'Game started. $start plays first.',
+          text: 'Game started. ${s.seatLabel(start)} plays first.',
           at: DateTime.now(),
         ),
       ],
@@ -177,7 +177,15 @@ class LiteratureEngine {
       currentSeatId: nextSeat,
       log: [
         ...s.log,
-        LitLogEntry(kind: 'ask', text: logText, at: DateTime.now()),
+        LitLogEntry(
+          kind: 'ask',
+          text: logText,
+          at: DateTime.now(),
+          askerSeatId: askerSeatId,
+          targetSeatId: targetSeatId,
+          cardId: card.id,
+          success: success,
+        ),
       ],
     ));
   }
@@ -250,7 +258,15 @@ class LiteratureEngine {
       winner: overallWinner,
       log: [
         ...s.log,
-        LitLogEntry(kind: 'declare', text: logText, at: DateTime.now()),
+        LitLogEntry(
+          kind: 'declare',
+          text: logText,
+          at: DateTime.now(),
+          askerSeatId: declarerSeatId,
+          halfSuiteId: halfSuiteId,
+          success: correct,
+          winnerTeam: winner.name,
+        ),
       ],
     ));
   }
@@ -281,13 +297,8 @@ class LiteratureEngine {
     return null;
   }
 
-  static String _seatLabel(LitGameState s, String seatId) {
-    final seat = s.seatById(seatId);
-    final names = seat.playerIds
-        .map((id) => s.players[id]?.name ?? '?')
-        .join('+');
-    return '$seatId ($names)';
-  }
+  static String _seatLabel(LitGameState s, String seatId) =>
+      s.seatLabel(seatId);
 
   static String _cardLabel(PlayingCard c) {
     if (c.suit == Suit.joker) {

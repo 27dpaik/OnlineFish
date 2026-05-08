@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -30,32 +32,42 @@ class LitGameScreen extends StatelessWidget {
                 '${s.gameId}  •  A ${s.teamScore(TeamId.a)}–${s.teamScore(TeamId.b)} B'),
           ),
           body: SafeArea(
-            child: Column(
+            child: Stack(
               children: [
-                _HalfSuiteStrip(state: s),
-                if (ctrl.isLocalMode) _SeatSwitcher(controller: ctrl, state: s),
-                _OpponentRow(state: s, mySeatId: ctrl.mySeatId),
-                Expanded(child: _LogPane(state: s)),
-                _ActionBar(state: s, controller: ctrl),
-                _HandPane(state: s, controller: ctrl),
-                if (ctrl.lastError != null)
-                  Container(
-                    width: double.infinity,
-                    color: Colors.amber.withValues(alpha: 0.2),
-                    padding: const EdgeInsets.all(8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(ctrl.lastError!,
-                              style: const TextStyle(color: Colors.amber)),
+                Column(
+                  children: [
+                    _HalfSuiteStrip(state: s),
+                    if (ctrl.isLocalMode)
+                      _SeatSwitcher(controller: ctrl, state: s),
+                    _OpponentRow(state: s, mySeatId: ctrl.mySeatId),
+                    const Expanded(child: SizedBox.shrink()),
+                    _ActionBar(state: s, controller: ctrl),
+                    _HandPane(state: s, controller: ctrl),
+                    if (ctrl.lastError != null)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.amber.withValues(alpha: 0.2),
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(ctrl.lastError!,
+                                  style: const TextStyle(color: Colors.amber)),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.amber),
+                              onPressed: ctrl.clearError,
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.amber),
-                          onPressed: ctrl.clearError,
-                        ),
-                      ],
-                    ),
+                      ),
+                  ],
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Center(child: _AnnouncementOverlay(state: s)),
                   ),
+                ),
               ],
             ),
           ),
@@ -123,15 +135,12 @@ class _SeatSwitcher extends StatelessWidget {
           ),
           ...state.seats.map((seat) {
             final selected = seat.id == mine;
-            final names = seat.playerIds
-                .map((id) => state.players[id]?.name ?? '?')
-                .join('+');
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: ChoiceChip(
                 selected: selected,
                 onSelected: (_) => controller.setViewingSeat(seat.id),
-                label: Text('${seat.id} $names'),
+                label: Text(state.seatLabel(seat.id)),
                 selectedColor: const Color(0xFF22C55E),
                 backgroundColor: Colors.white12,
                 labelStyle: TextStyle(
@@ -179,8 +188,6 @@ class _OpponentBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCurrent = state.currentSeatId == seat.id;
     final cardCount = state.hands[seat.id]?.length ?? 0;
-    final names =
-        seat.playerIds.map((id) => state.players[id]?.name ?? '?').join('+');
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -194,8 +201,12 @@ class _OpponentBadge extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text('${seat.id} $names',
-              style: const TextStyle(color: Colors.white, fontSize: 12)),
+          Text(state.seatLabel(seat.id),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis),
           const SizedBox(height: 4),
           Text('$cardCount cards',
               style: const TextStyle(color: Colors.white70, fontSize: 11)),
@@ -205,36 +216,269 @@ class _OpponentBadge extends StatelessWidget {
   }
 }
 
-class _LogPane extends StatelessWidget {
-  const _LogPane({required this.state});
+/// Floats over the table for ~5.5s after every ask/declare. There's
+/// deliberately no persistent log — that would defeat the memory aspect of
+/// Literature.
+class _AnnouncementOverlay extends StatefulWidget {
+  const _AnnouncementOverlay({required this.state});
+  final LitGameState state;
+
+  @override
+  State<_AnnouncementOverlay> createState() => _AnnouncementOverlayState();
+}
+
+class _AnnouncementOverlayState extends State<_AnnouncementOverlay> {
+  LitLogEntry? _showing;
+  Timer? _timer;
+
+  @override
+  void didUpdateWidget(_AnnouncementOverlay old) {
+    super.didUpdateWidget(old);
+    _maybeShowLatest();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowLatest());
+  }
+
+  void _maybeShowLatest() {
+    final newest =
+        widget.state.log.isEmpty ? null : widget.state.log.last;
+    if (newest == null) return;
+    if (newest.kind != 'ask' && newest.kind != 'declare') return;
+    if (_showing != null && _showing!.at == newest.at) return;
+    setState(() => _showing = newest);
+    _timer?.cancel();
+    _timer = Timer(const Duration(milliseconds: 5500), () {
+      if (mounted) setState(() => _showing = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = _showing;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      switchInCurve: Curves.easeOutBack,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(scale: anim, child: child),
+      ),
+      child: entry == null
+          ? const SizedBox.shrink(key: ValueKey('empty'))
+          : _AnnouncementCard(
+              key: ValueKey(entry.at.toIso8601String()),
+              entry: entry,
+              state: widget.state,
+            ),
+    );
+  }
+}
+
+class _AnnouncementCard extends StatelessWidget {
+  const _AnnouncementCard({
+    super.key,
+    required this.entry,
+    required this.state,
+  });
+  final LitLogEntry entry;
   final LitGameState state;
 
   @override
   Widget build(BuildContext context) {
-    final entries = state.log.reversed.take(20).toList();
+    if (entry.kind == 'ask') return _buildAsk(context);
+    if (entry.kind == 'declare') return _buildDeclare(context);
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildAsk(BuildContext context) {
+    final asker = state.seatLabel(entry.askerSeatId!);
+    final target = state.seatLabel(entry.targetSeatId!);
+    final card =
+        entry.cardId == null ? null : PlayingCard.fromId(entry.cardId!);
+    final success = entry.success ?? false;
+    final accent = success ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
+    final result = success ? 'GOT IT' : 'NO — TURN PASSES';
+    return _shell(
+      accent: accent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(asker,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: 12),
+              Icon(success ? Icons.arrow_forward : Icons.arrow_forward,
+                  color: accent, size: 28),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(target,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (card != null)
+            _AnimatedAskCard(card: card, success: success, accent: accent),
+          const SizedBox(height: 12),
+          Text(result,
+              style: TextStyle(
+                  color: accent,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeclare(BuildContext context) {
+    final declarer = state.seatLabel(entry.askerSeatId!);
+    final hs = HalfSuites.byId(entry.halfSuiteId!);
+    final correct = entry.success ?? false;
+    final accent = correct ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
+    final winnerTeamLabel = entry.winnerTeam == 'a' ? 'Team A' : 'Team B';
+    return _shell(
+      accent: accent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(declarer,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          const Text('declared',
+              style: TextStyle(color: Colors.white60, fontSize: 14)),
+          const SizedBox(height: 4),
+          Text(hs.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 12),
+          Text(correct ? '✓ CORRECT' : '✗ WRONG',
+              style: TextStyle(
+                  color: accent,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2)),
+          const SizedBox(height: 4),
+          Text('$winnerTeamLabel wins it',
+              style: const TextStyle(color: Colors.white70, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  Widget _shell({required Color accent, required Widget child}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
       decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFF06180F).withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.35),
+            blurRadius: 28,
+            spreadRadius: 2,
+          ),
+        ],
       ),
-      child: ListView.builder(
-        reverse: true,
-        itemCount: entries.length,
-        itemBuilder: (_, i) {
-          final e = entries[i];
-          final color = switch (e.kind) {
-            'declare' => Colors.amber,
-            'ask' => Colors.white,
-            _ => Colors.white60,
-          };
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(e.text, style: TextStyle(color: color, fontSize: 12)),
-          );
-        },
-      ),
+      child: child,
+    );
+  }
+}
+
+/// Slides the asked-for card across with a small bounce, signalling the
+/// transfer (or, on a failed ask, a quick shake instead).
+class _AnimatedAskCard extends StatefulWidget {
+  const _AnimatedAskCard({
+    required this.card,
+    required this.success,
+    required this.accent,
+  });
+  final PlayingCard card;
+  final bool success;
+  final Color accent;
+
+  @override
+  State<_AnimatedAskCard> createState() => _AnimatedAskCardState();
+}
+
+class _AnimatedAskCardState extends State<_AnimatedAskCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<Offset> _slide;
+  late final Animation<double> _shake;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(-1.2, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _shake = Tween<double>(begin: 0, end: 1).animate(_ctrl);
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.success) {
+      return SlideTransition(
+        position: _slide,
+        child: CardWidget(card: widget.card, size: 70),
+      );
+    }
+    // Failed ask: shake gently.
+    return AnimatedBuilder(
+      animation: _shake,
+      builder: (_, child) {
+        final t = _shake.value;
+        final dx = (t < 1)
+            ? (8 *
+                (t < 0.5 ? t : 1 - t) *
+                ((t * 8) % 2 < 1 ? 1 : -1))
+            : 0.0;
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: CardWidget(card: widget.card, size: 70),
     );
   }
 }
@@ -265,7 +509,7 @@ class _ActionBar extends StatelessWidget {
             child: Text(
               myTurn
                   ? "It's your turn — pick a card to ask for"
-                  : 'Turn: ${state.currentSeatId} (${state.seatById(state.currentSeatId!).team.label})',
+                  : 'Turn: ${state.seatLabel(state.currentSeatId!)} (${state.seatById(state.currentSeatId!).team.label})',
               style: TextStyle(
                   color: myTurn ? const Color(0xFF22C55E) : Colors.white,
                   fontWeight: FontWeight.bold,
@@ -356,11 +600,11 @@ Future<void> _showAskDialog(
                 Wrap(
                   spacing: 6,
                   children: oppSeats
-                      .map((s) => ChoiceChip(
-                            label: Text(s.id),
-                            selected: targetSeatId == s.id,
+                      .map((seatRef) => ChoiceChip(
+                            label: Text(state.seatLabel(seatRef.id)),
+                            selected: targetSeatId == seatRef.id,
                             onSelected: (_) =>
-                                setState(() => targetSeatId = s.id),
+                                setState(() => targetSeatId = seatRef.id),
                           ))
                       .toList(),
                 ),
@@ -449,7 +693,8 @@ class _HandPane extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Your hand ($mySeatId, ${hand.length} cards)',
+          Text(
+              'Your hand (${state.seatLabel(mySeatId)}, ${hand.length} cards)',
               style: const TextStyle(color: Colors.white70, fontSize: 12)),
           const SizedBox(height: 6),
           SizedBox(
