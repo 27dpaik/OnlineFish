@@ -4,6 +4,12 @@ import 'package:provider/provider.dart';
 import 'games/cambio/controller.dart';
 import 'games/cambio/models.dart';
 import 'games/cambio/screens/cambio_lobby_screen.dart';
+import 'games/castlefall/controller.dart';
+import 'games/castlefall/models.dart';
+import 'games/castlefall/screens/cf_lobby_screen.dart';
+import 'games/davinci/controller.dart';
+import 'games/davinci/models.dart';
+import 'games/davinci/screens/dv_lobby_screen.dart';
 import 'games/literature/controller.dart';
 import 'games/literature/models.dart';
 import 'games/literature/screens/lit_lobby_screen.dart';
@@ -13,7 +19,7 @@ import 'games/one_card/screens/oc_lobby_screen.dart';
 import 'shared/sync/firestore_sync.dart';
 import 'shared/sync/local_sync.dart';
 
-enum GameKind { literature, oneCard, cambio }
+enum GameKind { literature, oneCard, cambio, castlefall, davinci }
 
 extension on GameKind {
   String get title {
@@ -24,6 +30,10 @@ extension on GameKind {
         return 'One Card';
       case GameKind.cambio:
         return 'Cambio';
+      case GameKind.castlefall:
+        return 'Castlefall';
+      case GameKind.davinci:
+        return 'Da Vinci Code';
     }
   }
 
@@ -35,6 +45,10 @@ extension on GameKind {
         return '2+ players · attacks, shields, and a wild 7';
       case GameKind.cambio:
         return '2+ players · memory, peeks, and the race to call cambio';
+      case GameKind.castlefall:
+        return '4+ players · two teams, two words, find your team';
+      case GameKind.davinci:
+        return '2-4 players · sorted blocks, deduction, last hidden wins';
     }
   }
 
@@ -46,6 +60,10 @@ extension on GameKind {
         return const Color(0xFF3B82F6);
       case GameKind.cambio:
         return const Color(0xFFA855F7);
+      case GameKind.castlefall:
+        return const Color(0xFF60A5FA);
+      case GameKind.davinci:
+        return const Color(0xFFFCD34D);
     }
   }
 
@@ -57,6 +75,10 @@ extension on GameKind {
         return Icons.swap_horiz;
       case GameKind.cambio:
         return Icons.visibility_off;
+      case GameKind.castlefall:
+        return Icons.groups;
+      case GameKind.davinci:
+        return Icons.calculate;
     }
   }
 }
@@ -250,6 +272,12 @@ class _GameEntryScreenState extends State<GameEntryScreen> {
         case GameKind.cambio:
           await _startCambio(host: host, online: online, name: name);
           break;
+        case GameKind.castlefall:
+          await _startCastlefall(host: host, online: online, name: name);
+          break;
+        case GameKind.davinci:
+          await _startDavinci(host: host, online: online, name: name);
+          break;
       }
     } catch (e) {
       if (!mounted) return;
@@ -349,6 +377,68 @@ class _GameEntryScreenState extends State<GameEntryScreen> {
       builder: (_) => ChangeNotifierProvider.value(
         value: ctrl,
         child: const CambioLobbyScreen(),
+      ),
+    ));
+  }
+
+  Future<void> _startCastlefall({
+    required bool host,
+    required bool online,
+    required String name,
+  }) async {
+    final sync = online
+        ? FirestoreSync<CfState>(
+            collection: 'cf_games',
+            toJson: (s) => s.toJson(),
+            fromJson: CfState.fromJson,
+          )
+        : LocalSync<CfState>();
+    final ctrl = CfController(sync);
+    if (host) {
+      final code = await ctrl.createGame(hostName: name);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Code: $code')));
+      }
+    } else {
+      await ctrl.joinGame(code: _code.text.trim().toUpperCase(), name: name);
+    }
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => ChangeNotifierProvider.value(
+        value: ctrl,
+        child: const CfLobbyScreen(),
+      ),
+    ));
+  }
+
+  Future<void> _startDavinci({
+    required bool host,
+    required bool online,
+    required String name,
+  }) async {
+    final sync = online
+        ? FirestoreSync<DvState>(
+            collection: 'dv_games',
+            toJson: (s) => s.toJson(),
+            fromJson: DvState.fromJson,
+          )
+        : LocalSync<DvState>();
+    final ctrl = DvController(sync);
+    if (host) {
+      final code = await ctrl.createGame(hostName: name);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Code: $code')));
+      }
+    } else {
+      await ctrl.joinGame(code: _code.text.trim().toUpperCase(), name: name);
+    }
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => ChangeNotifierProvider.value(
+        value: ctrl,
+        child: const DvLobbyScreen(),
       ),
     ));
   }

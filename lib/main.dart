@@ -37,6 +37,12 @@ GameKind? _parseGameKind(String? s) {
       return GameKind.oneCard;
     case 'cambio':
       return GameKind.cambio;
+    case 'castlefall':
+      return GameKind.castlefall;
+    case 'davinci':
+    case 'davinciCode':
+    case 'da_vinci':
+      return GameKind.davinci;
     default:
       return null;
   }

@@ -11,5 +11,7 @@ void main() {
     expect(find.text('Literature'), findsOneWidget);
     expect(find.text('One Card'), findsOneWidget);
     expect(find.text('Cambio'), findsOneWidget);
+    expect(find.text('Castlefall'), findsOneWidget);
+    expect(find.text('Da Vinci Code'), findsOneWidget);
   });
 }
